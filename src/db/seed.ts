@@ -78,6 +78,40 @@ async function main() {
     })),
   );
 
+  // Raporların boş görünmemesi için son 7 güne ait örnek siparişler
+  const allTables = await db.select().from(tables);
+  const allProducts = await db.select().from(products);
+  const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+  for (let day = 6; day >= 0; day--) {
+    const orderCount = day === 0 ? 6 : 8 + Math.floor(Math.random() * 10);
+    for (let n = 0; n < orderCount; n++) {
+      const isActive = day === 0 && n >= 3;
+      // Mutfaktaki aktif siparişler birkaç dakika önce verilmiş gibi görünsün
+      const createdAt = isActive
+        ? new Date(Date.now() - (6 - n) * 4 * 60000)
+        : new Date(Date.now() - day * 86400000 - Math.random() * 6 * 3600000);
+      const chosen = [...new Set(Array.from({ length: 1 + Math.floor(Math.random() * 4) }, () => pick(allProducts)))];
+      const lines = chosen.map((p) => ({
+        productId: p.id,
+        name: p.name,
+        unitPrice: p.price,
+        quantity: 1 + Math.floor(Math.random() * 2),
+      }));
+      const status = isActive ? (["new", "preparing", "ready"] as const)[n - 3] : "served";
+      const [order] = await db
+        .insert(orders)
+        .values({
+          tableId: pick(allTables).id,
+          status,
+          total: lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0),
+          createdAt,
+          updatedAt: createdAt,
+        })
+        .returning();
+      await db.insert(orderItems).values(lines.map((l) => ({ ...l, orderId: order.id })));
+    }
+  }
+
   console.log("Örnek veri yüklendi.");
   console.log("Yönetici: yonetici@demo.com / demo1234");
   console.log("Mutfak:   mutfak@demo.com / demo1234");

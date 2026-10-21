@@ -16,11 +16,13 @@ type Order = {
   items: { id: number; name: string; quantity: number }[];
 };
 
-const COLUMNS: { status: OrderStatus; color: string; action: string }[] = [
-  { status: "new", color: "bg-ember-500", action: "Hazırlamaya başla" },
-  { status: "preparing", color: "bg-amber-400", action: "Hazır" },
-  { status: "ready", color: "bg-brand-500", action: "Teslim edildi" },
+const COLUMNS: { status: OrderStatus; color: string; icon: string; action: string }[] = [
+  { status: "new", color: "bg-ember-500", icon: "📝", action: "Hazırlamaya başla" },
+  { status: "preparing", color: "bg-amber-400", icon: "🔥", action: "Hazır" },
+  { status: "ready", color: "bg-brand-500", icon: "🔔", action: "Teslim edildi" },
 ];
+
+const LATE_MIN = 20;
 
 // Yeni sipariş gelince kısa bir "ding" sesi çalar (ses dosyası gerektirmez)
 function ding() {
@@ -49,8 +51,25 @@ export function KitchenBoard({ initial }: { initial: Order[] }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [sound, setSound] = useState(true);
+  const [dark, setDark] = useState(false);
   const soundRef = useRef(sound);
   soundRef.current = sound;
+
+  // Mutfak ekranları genelde loş ortamda durur; karanlık tema tercihi hatırlanır
+  useEffect(() => {
+    try {
+      setDark(localStorage.getItem("mutfak-tema") === "koyu");
+    } catch {}
+  }, []);
+  const toggleDark = () =>
+    setDark((d) => {
+      try {
+        localStorage.setItem("mutfak-tema", d ? "acik" : "koyu");
+      } catch {}
+      return !d;
+    });
+  const toggleFullscreen = () =>
+    document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.();
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
@@ -93,17 +112,30 @@ export function KitchenBoard({ initial }: { initial: Order[] }) {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-6">
+    <main className={cx("min-h-[calc(100dvh-57px)] transition-colors duration-500", dark ? "bg-stone-950 text-stone-100" : "")}>
+      <div className="mx-auto max-w-7xl px-5 py-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Mutfak paneli</h1>
-          <p className="flex items-center gap-2 text-sm text-stone-500">
-            <span className="size-2 animate-pulse rounded-full bg-brand-500" /> Canlı · {orders.length} aktif sipariş
+          <p className={cx("flex items-center gap-2 text-sm", dark ? "text-stone-400" : "text-stone-500")}>
+            <span className="relative flex size-2.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand-500 opacity-75" />
+              <span className="relative inline-flex size-2.5 rounded-full bg-brand-500" />
+            </span>
+            Canlı · {orders.length} aktif sipariş
           </p>
         </div>
-        <Button variant="secondary" onClick={() => setSound((s) => !s)}>
-          {sound ? "🔔 Ses açık" : "🔕 Ses kapalı"}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setSound((s) => !s)} className={cx(dark && "border-stone-700! bg-stone-900! text-stone-100! hover:bg-stone-800!")}>
+            {sound ? "🔔 Ses açık" : "🔕 Ses kapalı"}
+          </Button>
+          <Button variant="secondary" onClick={toggleDark} className={cx(dark && "border-stone-700! bg-stone-900! text-stone-100! hover:bg-stone-800!")}>
+            {dark ? "☀️ Açık" : "🌙 Koyu"}
+          </Button>
+          <Button variant="secondary" onClick={toggleFullscreen} className={cx(dark && "border-stone-700! bg-stone-900! text-stone-100! hover:bg-stone-800!")}>
+            ⛶ Tam ekran
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-5 md:grid-cols-3">
@@ -112,51 +144,77 @@ export function KitchenBoard({ initial }: { initial: Order[] }) {
             .filter((o) => o.status === col.status)
             .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
           return (
-            <section key={col.status} className="rounded-2xl bg-stone-100 p-3">
+            <section key={col.status} className={cx("rounded-2xl p-3 transition-colors", dark ? "bg-stone-900" : "bg-stone-100")}>
+              <div className={cx("mb-3 h-1 rounded-full", col.color)} />
               <h2 className="mb-3 flex items-center gap-2 px-1 font-semibold">
-                <span className={cx("size-3 rounded-full", col.color)} />
+                <span>{col.icon}</span>
                 {STATUS_LABEL[col.status]}
-                <span className="ml-auto rounded-full bg-white px-2 text-sm">{list.length}</span>
+                <span
+                  key={list.length}
+                  className={cx("animate-bump ml-auto rounded-full px-2.5 text-sm font-bold text-white", col.color)}
+                >
+                  {list.length}
+                </span>
               </h2>
               <div className="space-y-3">
-                {list.length === 0 && <p className="py-8 text-center text-sm text-stone-400">Sipariş yok</p>}
+                {list.length === 0 && (
+                  <div className={cx("rounded-xl border-2 border-dashed py-10 text-center text-sm", dark ? "border-stone-800 text-stone-600" : "border-stone-200 text-stone-400")}>
+                    Sipariş yok
+                  </div>
+                )}
                 {list.map((o) => {
                   const next = nextStatus(o.status);
-                  const late = now - new Date(o.createdAt).getTime() > 20 * 60000;
+                  const minutes = (now - new Date(o.createdAt).getTime()) / 60000;
+                  const late = minutes > LATE_MIN;
+                  const ratio = Math.min(minutes / LATE_MIN, 1);
                   return (
                     <article
                       key={o.id}
                       className={cx(
-                        "animate-pop-in rounded-xl bg-white p-4 shadow-sm",
+                        "animate-slide-in relative overflow-hidden rounded-xl p-4 shadow-sm transition hover:shadow-md",
+                        dark ? "bg-stone-800" : "bg-white",
                         fresh.has(o.id) && "animate-flash",
+                        late && "ring-2 ring-red-500/60",
                       )}
                     >
                       <div className="flex items-baseline justify-between">
                         <h3 className="text-lg font-bold">{o.table.name}</h3>
-                        <span className={cx("text-sm", late ? "font-semibold text-red-600" : "text-stone-500")}>
-                          #{o.number} · {elapsed(o.createdAt, now)}
+                        <span className={cx("text-sm", late ? "font-semibold text-red-500" : dark ? "text-stone-400" : "text-stone-500")}>
+                          {late && "⚠️ "}#{o.number} · {elapsed(o.createdAt, now)}
                         </span>
                       </div>
+                      {o.status !== "ready" && (
+                        <div className={cx("mt-2 h-1 overflow-hidden rounded-full", dark ? "bg-stone-700" : "bg-stone-100")}>
+                          <div
+                            className={cx(
+                              "h-full rounded-full transition-all duration-1000",
+                              ratio < 0.5 ? "bg-brand-500" : ratio < 1 ? "bg-amber-400" : "bg-red-500",
+                            )}
+                            style={{ width: `${Math.max(ratio * 100, 4)}%` }}
+                          />
+                        </div>
+                      )}
                       <ul className="mt-2 space-y-1">
                         {o.items.map((i) => (
-                          <li key={i.id} className="flex gap-2">
-                            <span className="font-bold text-brand-700">{i.quantity}×</span>
+                          <li key={i.id} className="flex items-center gap-2">
+                            <span className={cx("grid min-w-7 place-items-center rounded-md px-1 text-sm font-bold", dark ? "bg-brand-900 text-lime-300" : "bg-brand-50 text-brand-700")}>{i.quantity}×</span>
                             {i.name}
                           </li>
                         ))}
                       </ul>
                       {o.note && (
-                        <p className="mt-2 rounded-lg bg-amber-50 p-2 text-sm text-amber-900">📝 {o.note}</p>
+                        <p className={cx("mt-2 rounded-lg p-2 text-sm", dark ? "bg-amber-900/40 text-amber-200" : "bg-amber-50 text-amber-900")}>📝 {o.note}</p>
                       )}
                       <div className="mt-3 flex gap-2">
                         {next && (
-                          <Button className="flex-1" disabled={busy === o.id} onClick={() => move(o, next)}>
+                          <Button className="press flex-1" disabled={busy === o.id} onClick={() => move(o, next)}>
                             {col.action}
                           </Button>
                         )}
                         {o.status !== "ready" && (
                           <Button
                             variant="ghost"
+                            className={cx(dark && "text-stone-400 hover:bg-stone-700")}
                             disabled={busy === o.id}
                             onClick={() => confirm(`${o.table.name} siparişi iptal edilsin mi?`) && move(o, "cancelled")}
                           >
@@ -171,6 +229,7 @@ export function KitchenBoard({ initial }: { initial: Order[] }) {
             </section>
           );
         })}
+      </div>
       </div>
     </main>
   );

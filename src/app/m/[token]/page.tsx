@@ -1,8 +1,8 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ne, sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/db";
-import { categories, products, tables } from "@/db/schema";
+import { categories, orderItems, orders, products, tables } from "@/db/schema";
 import { MenuClient } from "./menu-client";
 
 export const metadata: Metadata = { title: "Menü" };
@@ -18,5 +18,22 @@ export default async function MenuPage({ params }: { params: Promise<{ token: st
     with: { products: { orderBy: [asc(products.sortOrder)] } },
   });
 
-  return <MenuClient tableName={table.name} tableToken={token} menu={menu.filter((c) => c.products.length)} />;
+  // Son 7 günün en çok satan 3 ürünü "Popüler" rozeti alır
+  const popular = await db
+    .select({ id: orderItems.productId })
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(and(gte(orders.createdAt, sql`now() - interval '7 days'`), ne(orders.status, "cancelled")))
+    .groupBy(orderItems.productId)
+    .orderBy(desc(sql`sum(${orderItems.quantity})`))
+    .limit(3);
+
+  return (
+    <MenuClient
+      tableName={table.name}
+      tableToken={token}
+      menu={menu.filter((c) => c.products.length)}
+      popular={popular.map((p) => p.id).filter((id): id is number => id !== null)}
+    />
+  );
 }

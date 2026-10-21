@@ -25,16 +25,20 @@ export default async function DashboardPage() {
       <h1 className="text-2xl font-bold">Bugünün özeti</h1>
       <div className="grid gap-4 sm:grid-cols-3">
         {[
-          ["Ciro", formatTL(d.revenue), "💰"],
-          ["Sipariş", String(d.count), "🧾"],
-          ["Ortalama sepet", formatTL(d.average), "🛒"],
-        ].map(([label, value, icon]) => (
-          <Card key={label}>
-            <p className="text-sm text-stone-500">
-              {icon} {label}
-            </p>
-            <p className="mt-1 text-3xl font-bold">{value}</p>
-          </Card>
+          ["Bugünkü ciro", formatTL(d.revenue), "💰", "from-brand-600 to-brand-900"],
+          ["Sipariş", String(d.count), "🧾", "from-ember-500 to-ember-600"],
+          ["Ortalama sepet", formatTL(d.average), "🛒", "from-amber-400 to-amber-600"],
+        ].map(([label, value, icon, grad], i) => (
+          <div
+            key={label}
+            style={{ animationDelay: `${i * 90}ms` }}
+            className={`animate-pop-in relative overflow-hidden rounded-2xl bg-gradient-to-br ${grad} p-5 text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl`}
+          >
+            <div className="pattern-dots absolute inset-0" />
+            <span className="absolute -right-3 -top-3 text-7xl opacity-20">{icon}</span>
+            <p className="relative text-sm text-white/80">{label}</p>
+            <p className="relative mt-1 text-3xl font-extrabold">{value}</p>
+          </div>
         ))}
       </div>
 
@@ -43,11 +47,13 @@ export default async function DashboardPage() {
           <h2 className="font-semibold">Son 7 gün ciro</h2>
           <div className="mt-6 flex h-48 items-end gap-3">
             {d.week.map((w) => (
-              <div key={w.day.toISOString()} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
-                <span className="text-xs text-stone-500">{w.revenue ? formatTL(w.revenue).replace(",00", "") : ""}</span>
+              <div key={w.day.toISOString()} className="group flex h-full flex-1 flex-col items-center justify-end gap-2">
+                <span className="text-xs font-medium text-stone-500 transition group-hover:text-brand-700">
+                  {w.revenue ? formatTL(w.revenue).replace(",00", "") : ""}
+                </span>
                 <div
-                  className="w-full rounded-t-lg bg-brand-500 transition-all"
-                  style={{ height: `${Math.max((w.revenue / max) * 100, 2)}%` }}
+                  className="animate-grow-up w-full rounded-t-lg bg-gradient-to-t from-brand-600 to-brand-500 transition group-hover:from-ember-600 group-hover:to-ember-500"
+                  style={{ height: `${Math.max((w.revenue / max) * 100, 2)}%`, animationDelay: `${d.week.indexOf(w) * 70}ms` }}
                   title={formatTL(w.revenue)}
                 />
                 <span className="text-xs text-stone-500">
@@ -65,12 +71,25 @@ export default async function DashboardPage() {
           ) : (
             <ol className="mt-4 space-y-3">
               {d.topProducts.map((p, i) => (
-                <li key={p.name} className="flex items-center gap-3">
-                  <span className="grid size-7 place-items-center rounded-full bg-brand-50 text-sm font-bold text-brand-700">
-                    {i + 1}
-                  </span>
-                  <span className="flex-1 font-medium">{p.name}</span>
-                  <span className="text-sm text-stone-500">{p.quantity} adet</span>
+                <li key={p.name}>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={cx(
+                        "grid size-7 place-items-center rounded-full text-sm font-bold",
+                        i === 0 ? "bg-amber-400 text-white" : "bg-brand-50 text-brand-700",
+                      )}
+                    >
+                      {i === 0 ? "🏆" : i + 1}
+                    </span>
+                    <span className="flex-1 font-medium">{p.name}</span>
+                    <span className="text-sm text-stone-500">{p.quantity} adet</span>
+                  </div>
+                  <div className="ml-10 mt-1.5 h-1.5 overflow-hidden rounded-full bg-stone-100">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-brand-500 to-lime-400"
+                      style={{ width: `${(p.quantity / d.topProducts[0].quantity) * 100}%` }}
+                    />
+                  </div>
                 </li>
               ))}
             </ol>
@@ -93,7 +112,7 @@ export default async function DashboardPage() {
             </thead>
             <tbody className="divide-y divide-stone-100">
               {d.recent.map((o) => (
-                <tr key={o.id}>
+                <tr key={o.id} className="transition hover:bg-stone-50">
                   <td className="py-2">#{o.number}</td>
                   <td className="py-2">{o.table.name}</td>
                   <td className="py-2">

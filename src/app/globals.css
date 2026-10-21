@@ -26,3 +26,58 @@ body {
   50% { box-shadow: 0 0 0 4px var(--color-ember-500); }
 }
 .animate-flash { animation: flash 1s ease-in-out 3; }
+
+/* --- Görsel geliştirmeler --- */
+@keyframes float-y { 50% { transform: translateY(-12px); } }
+.animate-float { animation: float-y 6s ease-in-out infinite; }
+
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(40px, -30px) scale(1.1); }
+  66% { transform: translate(-30px, 20px) scale(.95); }
+}
+.animate-blob { animation: blob 14s ease-in-out infinite; }
+
+@keyframes bump { 30% { transform: scale(1.25); } 60% { transform: scale(.95); } }
+.animate-bump { animation: bump .4s ease-out; }
+
+@keyframes slide-in { from { opacity: 0; transform: translateX(-24px) scale(.97); } }
+.animate-slide-in { animation: slide-in .45s cubic-bezier(.2, .9, .3, 1.2) both; }
+
+@keyframes grow-up { from { transform: scaleY(0); } }
+.animate-grow-up { animation: grow-up .9s cubic-bezier(.2, .8, .2, 1) both; transform-origin: bottom; }
+
+@keyframes shimmer-bg { to { background-position: 200% 0; } }
+.text-shimmer {
+  background: linear-gradient(90deg, #fff 0%, #e3f3d3 25%, #fbbf77 50%, #e3f3d3 75%, #fff 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer-bg 6s linear infinite;
+}
+
+@keyframes ring-pulse { 0% { box-shadow: 0 0 0 0 rgb(255 255 255 / .5); } 100% { box-shadow: 0 0 0 18px transparent; } }
+.animate-ring { animation: ring-pulse 1.8s ease-out infinite; }
+
+@keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
+.animate-wiggle { animation: wiggle .6s ease-in-out 2; }
+
+.pattern-dots {
+  background-image: radial-gradient(rgb(255 255 255 / .12) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+.press { transition: transform .15s; }
+.press:active { transform: scale(.97); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-20px) rotate(0); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: .9; }
+}
+.confetti { animation: confetti-fall linear both; }

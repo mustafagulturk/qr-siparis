@@ -2,6 +2,8 @@
 
 ![CI](https://github.com/mustafagulturk/qr-siparis/actions/workflows/ci.yml/badge.svg)
 
+![Ana sayfa](docs/anasayfa.png)
+
 Restoranlar için uçtan uca bir sipariş sistemi. Müşteri masadaki QR kodu okutur, uygulama indirmeden menüyü görür ve sipariş verir. Sipariş **anında** mutfak ekranına düşer. Mutfak siparişi ilerlettikçe müşteri durumu telefonundan **canlı** takip eder. İşletme sahibi de menüyü, masaları ve günlük ciroyu yönetim panelinden yönetir.
 
 <p>
@@ -15,21 +17,26 @@ Restoranlar için uçtan uca bir sipariş sistemi. Müşteri masadaki QR kodu ok
 ## Özellikler
 
 **Müşteri (mobil)**
-- QR kod ile masaya özel menü, kategori sekmeleri
-- Sepet, ürün adedi ve mutfağa not. Sepet sayfa yenilense de kaybolmaz.
-- Sipariş durumunu gerçek zamanlı takip (Alındı → Hazırlanıyor → Hazır → Teslim edildi), durum değişince titreşim
+- QR kod ile masaya özel menü, kaydırdıkça kendini vurgulayan kategori sekmeleri
+- Türkçe karakter duyarsız menü araması ("cay" yazınca "Çay" bulunur)
+- Son 7 günün en çok satanlarına otomatik "🔥 Popüler" rozeti
+- Animasyonlu sepet, ürün adedi ve mutfağa not. Sepet sayfa yenilense de kaybolmaz.
+- Sipariş durumunu gerçek zamanlı takip (Alındı → Hazırlanıyor → Hazır → Teslim edildi), tahmini süre, durum değişince titreşim, sipariş hazır olunca konfeti
 
 **Mutfak paneli**
 - Siparişler üç sütunlu panoda canlı akar, yeni siparişte sesli uyarı verilir
 - Tek tıkla durum ilerletme ve iyimser arayüz güncellemesi
-- 20 dakikayı geçen siparişler kırmızıyla vurgulanır
+- Her siparişte bekleme süresi çubuğu (yeşil → sarı → kırmızı), 20 dakikayı geçenler uyarıyla vurgulanır
+- Loş mutfak ortamı için karanlık tema ve tam ekran modu
 
 **Yönetim paneli**
-- Günlük ciro, sipariş sayısı, ortalama sepet, son 7 gün grafiği ve en çok satanlar
+- Günlük ciro, sipariş sayısı, ortalama sepet, animasyonlu 7 günlük ciro grafiği ve en çok satanlar
 - Kategori ve ürün ekleme, düzenleme, silme, "tükendi" olarak işaretleme
 - Masa ekleme, yazdırılabilir QR kodlar, sızan QR kodu tek tıkla geçersiz kılma
 
 ![Yönetim paneli](docs/yonetim.png)
+
+![Masalar ve QR kodlar](docs/masalar.png)
 
 ## Teknik detaylar
 
@@ -66,7 +73,7 @@ npm install
 cp .env.example .env          # DATABASE_URL ve SESSION_SECRET değerlerini düzenleyin
 
 npm run db:migrate            # tabloları oluşturur
-npm run db:seed               # örnek Gaziantep menüsü, masalar ve demo hesaplar
+npm run db:seed               # örnek Gaziantep menüsü, masalar, demo hesaplar ve 7 günlük örnek sipariş
 npm run dev                   # http://localhost:3000
 ```
 
