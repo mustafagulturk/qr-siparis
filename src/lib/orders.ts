@@ -94,7 +94,7 @@ export async function updateOrderStatus(db: Db, orderId: string, to: OrderStatus
 export function getOrder(db: Db, orderId: string) {
   return db.query.orders.findFirst({
     where: eq(orders.id, orderId),
-    with: { items: true, table: { columns: { name: true } } },
+    with: { items: true, table: { columns: { name: true, token: true } }, review: true },
   });
 }
 

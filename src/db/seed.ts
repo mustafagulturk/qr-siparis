@@ -1,48 +1,57 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { createDb } from "./index";
-import { categories, orderItems, orders, products, tables, users } from "./schema";
+import { categories, orderItems, orders, products, reviews, serviceRequests, tables, users } from "./schema";
 
 // Örnek veri: Gaziantep mutfağından bir menü
 const MENU = [
   {
     name: "Çorbalar",
     items: [
-      ["Ezogelin Çorbası", "Kırmızı mercimek, bulgur ve nane ile", 9000, "🥣"],
-      ["Yuvalama Çorbası", "Gaziantep'in meşhur yoğurtlu köfteli çorbası", 14000, "🥣"],
+      ["Ezogelin Çorbası", "Kırmızı mercimek, bulgur ve nane ile", 9000, "🥣", ["vejetaryen"]],
+      ["Yuvalama Çorbası", "Gaziantep'in meşhur yoğurtlu köfteli çorbası", 14000, "🥣", ["sef"]],
     ],
   },
   {
     name: "Kebaplar",
     items: [
-      ["Ali Nazik", "Közlenmiş patlıcanlı yoğurt üzerinde kuzu kıyma", 42000, "🍢"],
-      ["Simit Kebabı", "İnce bulgurlu, bol baharatlı Antep usulü kebap", 38000, "🍢"],
-      ["Beyti Sarma", "Lavaşa sarılı, yoğurt ve tereyağlı sos ile", 44000, "🌯"],
-      ["Lahmacun", "İnce hamur, taze kıyma, yanında yeşillik", 12000, "🫓"],
+      ["Ali Nazik", "Közlenmiş patlıcanlı yoğurt üzerinde kuzu kıyma", 42000, "🍢", ["sef", "glutensiz"]],
+      ["Simit Kebabı", "İnce bulgurlu, bol baharatlı Antep usulü kebap", 38000, "🍢", ["acili"]],
+      ["Beyti Sarma", "Lavaşa sarılı, yoğurt ve tereyağlı sos ile", 44000, "🌯", ["acili"]],
+      ["Lahmacun", "İnce hamur, taze kıyma, yanında yeşillik", 12000, "🫓", ["acili"]],
     ],
   },
   {
     name: "Tatlılar",
     items: [
-      ["Fıstıklı Baklava", "Porsiyon, 4 dilim Antep fıstıklı", 26000, "🥮"],
-      ["Katmer", "Kaymak ve Antep fıstığı ile, 2 kişilik", 32000, "🥞"],
-      ["Künefe", "Sıcak servis, üzeri fıstıklı", 22000, "🧀"],
+      ["Fıstıklı Baklava", "Porsiyon, 4 dilim Antep fıstıklı", 26000, "🥮", ["vejetaryen", "sef"]],
+      ["Katmer", "Kaymak ve Antep fıstığı ile, 2 kişilik", 32000, "🥞", ["vejetaryen"]],
+      ["Künefe", "Sıcak servis, üzeri fıstıklı", 22000, "🧀", ["vejetaryen"]],
     ],
   },
   {
     name: "İçecekler",
     items: [
-      ["Ayran", "Yayık ayranı", 4000, "🥛"],
-      ["Şalgam", "Acılı veya acısız", 4500, "🥤"],
-      ["Türk Kahvesi", "Lokum ile", 6000, "☕"],
-      ["Menengiç Kahvesi", "Gaziantep'e özgü, sütlü", 7500, "☕"],
+      ["Ayran", "Yayık ayranı", 4000, "🥛", ["vejetaryen", "glutensiz"]],
+      ["Şalgam", "Acılı veya acısız", 4500, "🥤", ["vejetaryen", "glutensiz"]],
+      ["Türk Kahvesi", "Lokum ile", 6000, "☕", ["vejetaryen"]],
+      ["Menengiç Kahvesi", "Gaziantep'e özgü, sütlü", 7500, "☕", ["vejetaryen", "glutensiz"]],
     ],
   },
 ] as const;
 
+const REVIEW_COMMENTS = [
+  "Ali Nazik harikaydı, servis de çok hızlıydı.",
+  "QR ile sipariş vermek çok pratik, garson beklemedik.",
+  "Baklava taptaze, kesinlikle tekrar geleceğiz.",
+  "Yuvalama tam annemin yaptığı gibi.",
+];
+
 async function main() {
   const db = createDb();
 
+  await db.delete(reviews);
+  await db.delete(serviceRequests);
   await db.delete(orderItems);
   await db.delete(orders);
   await db.delete(products);
@@ -59,12 +68,13 @@ async function main() {
   for (const [i, cat] of MENU.entries()) {
     const [c] = await db.insert(categories).values({ name: cat.name, sortOrder: i }).returning();
     await db.insert(products).values(
-      cat.items.map(([name, description, price, emoji], j) => ({
+      cat.items.map(([name, description, price, emoji, tags], j) => ({
         categoryId: c.id,
         name,
         description,
         price,
         emoji,
+        tags: [...tags],
         sortOrder: j,
       })),
     );
@@ -109,8 +119,22 @@ async function main() {
         })
         .returning();
       await db.insert(orderItems).values(lines.map((l) => ({ ...l, orderId: order.id })));
+
+      // Teslim edilen siparişlerin bir kısmı değerlendirilmiş olsun
+      if (status === "served" && Math.random() < 0.4) {
+        const rating = pick([5, 5, 5, 4, 4, 3]);
+        await db.insert(reviews).values({
+          orderId: order.id,
+          rating,
+          comment: rating === 5 ? pick(REVIEW_COMMENTS) : "",
+          createdAt,
+        });
+      }
     }
   }
+
+  // Masa 2 hesap istiyor
+  await db.insert(serviceRequests).values({ tableId: allTables[1].id, type: "bill" });
 
   console.log("Örnek veri yüklendi.");
   console.log("Yönetici: yonetici@demo.com / demo1234");

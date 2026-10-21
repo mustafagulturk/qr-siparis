@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ServiceButtons } from "@/components/service-buttons";
 import { Button, cx } from "@/components/ui";
 import { RESTAURANT_NAME } from "@/lib/config";
 import { formatTL } from "@/lib/money";
+import { TAGS, TAG_KEYS, isTag, type Tag } from "@/lib/tags";
 
 type Product = {
   id: number;
@@ -13,6 +15,7 @@ type Product = {
   price: number;
   emoji: string;
   isAvailable: boolean;
+  tags: string[];
 };
 type Category = { id: number; name: string; products: Product[] };
 
@@ -71,6 +74,7 @@ export function MenuClient({
   const [lastOrder, setLastOrder] = useState<string | null>(null);
   const [active, setActive] = useState(menu[0]?.id);
   const [query, setQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState<Tag | null>(null);
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
   const tabs = useRef<HTMLElement>(null);
 
@@ -114,14 +118,21 @@ export function MenuClient({
   const productById = useMemo(() => new Map(menu.flatMap((c) => c.products).map((p) => [p.id, p])), [menu]);
   const filtered = useMemo(() => {
     const q = normalize(query.trim());
-    if (!q) return menu;
+    if (!q && !tagFilter) return menu;
     return menu
       .map((c) => ({
         ...c,
-        products: c.products.filter((p) => normalize(`${p.name} ${p.description}`).includes(q)),
+        products: c.products.filter(
+          (p) =>
+            (!q || normalize(`${p.name} ${p.description}`).includes(q)) && (!tagFilter || p.tags.includes(tagFilter)),
+        ),
       }))
       .filter((c) => c.products.length);
-  }, [menu, query]);
+  }, [menu, query, tagFilter]);
+  const usedTags = useMemo(
+    () => TAG_KEYS.filter((t) => menu.some((c) => c.products.some((p) => p.tags.includes(t)))),
+    [menu],
+  );
 
   const lines = Object.entries(cart)
     .map(([id, qty]) => ({ product: productById.get(Number(id))!, qty }))
@@ -179,6 +190,9 @@ export function MenuClient({
         </span>
         <h1 className="mt-3 text-3xl font-extrabold">{RESTAURANT_NAME}</h1>
         <p className="mt-1 text-sm text-brand-100">Siparişinizi seçin, mutfağa anında iletilsin.</p>
+        <div className="mt-4">
+          <ServiceButtons tableToken={tableToken} tone="dark" />
+        </div>
         {lastOrder && (
           <a
             href={`/siparis/${lastOrder}`}
@@ -203,6 +217,23 @@ export function MenuClient({
             />
           </div>
         </div>
+        {usedTags.length > 0 && (
+          <div className="no-scrollbar flex gap-2 overflow-x-auto px-5 pt-3">
+            {usedTags.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTagFilter((f) => (f === t ? null : t))}
+                aria-pressed={tagFilter === t}
+                className={cx(
+                  "press whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold transition",
+                  tagFilter === t ? "bg-stone-900 text-white" : TAGS[t].className,
+                )}
+              >
+                {TAGS[t].icon} {TAGS[t].label}
+              </button>
+            ))}
+          </div>
+        )}
         <nav ref={tabs} className="no-scrollbar flex gap-2 overflow-x-auto px-5 py-3">
           {filtered.map((c) => (
             <a
@@ -226,7 +257,16 @@ export function MenuClient({
         {filtered.length === 0 && (
           <div className="py-16 text-center text-stone-500">
             <div className="text-4xl">🤷</div>
-            <p className="mt-2">&quot;{query}&quot; için sonuç bulunamadı.</p>
+            <p className="mt-2">Aramanıza uygun ürün bulunamadı.</p>
+            <button
+              onClick={() => {
+                setQuery("");
+                setTagFilter(null);
+              }}
+              className="mt-3 text-sm font-semibold text-brand-700"
+            >
+              Filtreleri temizle
+            </button>
           </div>
         )}
         {filtered.map((c) => (
@@ -262,6 +302,15 @@ export function MenuClient({
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold">{p.name}</h3>
                       <p className="mt-0.5 line-clamp-2 text-sm text-stone-500">{p.description}</p>
+                      {p.tags.some(isTag) && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {p.tags.filter(isTag).map((t) => (
+                            <span key={t} className={cx("rounded-md px-1.5 py-0.5 text-[11px] font-semibold", TAGS[t].className)}>
+                              {TAGS[t].icon} {TAGS[t].label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="mt-2 flex items-center justify-between">
                         <span className="font-bold text-brand-700">{formatTL(p.price)}</span>
                         {!p.isAvailable ? (

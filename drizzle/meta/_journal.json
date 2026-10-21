@@ -8,6 +8,13 @@
       "when": 1792586651529,
       "tag": "0000_baslangic",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792590087499,
+      "tag": "0001_servis_ve_degerlendirme",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, cx } from "@/components/ui";
+import { TAGS, TAG_KEYS } from "@/lib/tags";
 import { addCategory, deleteCategory, deleteProduct, saveProduct, toggleProduct } from "../actions";
 
 type Option = { id: number; name: string };
@@ -13,6 +14,7 @@ type Product = {
   price: number;
   emoji: string;
   isAvailable: boolean;
+  tags: string[];
 };
 
 const priceText = (kurus: number) => (kurus / 100).toFixed(2).replace(".", ",");
@@ -66,6 +68,23 @@ export function ProductForm({
           className="w-32"
         />
       </div>
+      <fieldset className="flex flex-wrap gap-1.5">
+        <legend className="sr-only">Etiketler</legend>
+        {TAG_KEYS.map((t) => (
+          <label key={t} className="cursor-pointer">
+            <input type="checkbox" name="tags" value={t} defaultChecked={product?.tags.includes(t)} className="peer sr-only" />
+            <span
+              className={cx(
+                "inline-block rounded-lg border border-transparent px-2 py-1 text-xs font-semibold opacity-50 transition",
+                "peer-checked:border-current peer-checked:opacity-100 peer-focus-visible:ring-2",
+                TAGS[t].className,
+              )}
+            >
+              {TAGS[t].icon} {TAGS[t].label}
+            </span>
+          </label>
+        ))}
+      </fieldset>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <div className="flex gap-2">
         <Button disabled={pending} className="flex-1">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cx } from "@/components/ui";
+import { ServiceButtons } from "@/components/service-buttons";
+import { Button, cx } from "@/components/ui";
 import type { OrderStatus } from "@/db/schema";
 import { formatTL } from "@/lib/money";
 import { STATUS_LABEL } from "@/lib/status";
@@ -14,9 +15,80 @@ type Order = {
   note: string;
   total: number;
   createdAt: string;
-  table: { name: string };
+  table: { name: string; token: string };
   items: { id: number; name: string; unitPrice: number; quantity: number }[];
+  review: { rating: number; comment: string } | null;
 };
+
+function ReviewCard({ orderId, initial }: { orderId: string; initial: Order["review"] }) {
+  const [review, setReview] = useState(initial);
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (review) {
+    return (
+      <section className="animate-pop-in mt-6 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-5 text-center">
+        <p className="text-2xl">{"⭐".repeat(review.rating)}</p>
+        <p className="mt-1 font-semibold">Değerlendirmeniz için teşekkürler!</p>
+      </section>
+    );
+  }
+
+  async function submit() {
+    setBusy(true);
+    setError("");
+    const res = await fetch(`/api/orders/${orderId}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating, comment }),
+    });
+    const data = await res.json();
+    if (res.ok) setReview(data);
+    else setError(data.error ?? "Gönderilemedi");
+    setBusy(false);
+  }
+
+  return (
+    <section className="animate-pop-in mt-6 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5">
+      <h2 className="text-center font-semibold">Yemeğinizi nasıl buldunuz?</h2>
+      <div className="mt-3 flex justify-center gap-1" onMouseLeave={() => setHover(0)}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            aria-label={`${n} yıldız`}
+            onMouseEnter={() => setHover(n)}
+            onClick={() => setRating(n)}
+            className={cx(
+              "text-4xl transition-transform duration-200 hover:scale-125",
+              n <= (hover || rating) ? "scale-110" : "opacity-30 grayscale",
+            )}
+          >
+            ⭐
+          </button>
+        ))}
+      </div>
+      {rating > 0 && (
+        <div className="animate-pop-in mt-4">
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            maxLength={500}
+            rows={2}
+            placeholder="Eklemek istediğiniz bir şey var mı? (isteğe bağlı)"
+            className="w-full rounded-xl border border-amber-200 bg-white p-3 text-sm outline-none focus:border-amber-400"
+          />
+          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          <Button className="mt-2 w-full" disabled={busy} onClick={submit}>
+            Gönder
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
 
 const STEPS: { status: OrderStatus; icon: string; text: string }[] = [
   { status: "new", icon: "📝", text: "Siparişiniz mutfağa iletildi" },
@@ -88,8 +160,9 @@ export function OrderTracker({ initial }: { initial: Order }) {
   }, [order.status]);
 
   useOrderEvents(`/api/events?order=${order.id}`, async (e) => {
-    if (e) {
-      setOrder((o) => ({ ...o, status: e.status }));
+    if (e && e.type !== "service") {
+      const status = e.status;
+      setOrder((o) => ({ ...o, status }));
       setPulse(true);
       navigator.vibrate?.(200);
       setTimeout(() => setPulse(false), 3000);
@@ -181,6 +254,16 @@ export function OrderTracker({ initial }: { initial: Order }) {
         </ol>
       )}
 
+      {(order.status === "ready" || order.status === "served") && (
+        <ReviewCard orderId={order.id} initial={order.review} />
+      )}
+
+      {!cancelled && (
+        <div className="mt-6 flex justify-center">
+          <ServiceButtons tableToken={order.table.token} />
+        </div>
+      )}
+
       <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
         <h2 className="font-semibold">Sipariş detayı</h2>
         <ul className="mt-3 divide-y divide-stone-100 text-sm">
@@ -199,7 +282,13 @@ export function OrderTracker({ initial }: { initial: Order }) {
           <span>{formatTL(order.total)}</span>
         </div>
       </section>
-      <p className="mt-6 text-center text-xs text-stone-400">Bu sayfa otomatik olarak güncellenir.</p>
+      <a
+        href={`/m/${order.table.token}`}
+        className="press mt-6 block rounded-2xl border border-stone-200 bg-white py-3 text-center font-semibold text-brand-700 hover:bg-brand-50"
+      >
+        + Yeni sipariş ver
+      </a>
+      <p className="mt-4 text-center text-xs text-stone-400">Bu sayfa otomatik olarak güncellenir.</p>
     </main>
   );
 }

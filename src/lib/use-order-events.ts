@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { OrderEvent } from "./events";
+import type { LiveEvent } from "./events";
 
 /**
  * Sunucudan gelen sipariş olaylarını dinler. Bağlantı koparsa tarayıcı
  * otomatik yeniden bağlanır; ek güvence için belirli aralıklarla da yeniler.
  */
-export function useOrderEvents(url: string, onEvent: (e: OrderEvent | null) => void, fallbackMs = 15000) {
+export function useOrderEvents(url: string, onEvent: (e: LiveEvent | null) => void, fallbackMs = 15000) {
   const handler = useRef(onEvent);
   handler.current = onEvent;
 

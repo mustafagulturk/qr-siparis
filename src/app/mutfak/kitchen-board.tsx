@@ -24,15 +24,23 @@ const COLUMNS: { status: OrderStatus; color: string; icon: string; action: strin
 
 const LATE_MIN = 20;
 
-// Yeni sipariş gelince kısa bir "ding" sesi çalar (ses dosyası gerektirmez)
-function ding() {
+type ServiceRequest = {
+  id: number;
+  type: "waiter" | "bill";
+  createdAt: string;
+  table: { name: string };
+};
+
+// Yeni sipariş gelince kısa bir "ding" sesi çalar (ses dosyası gerektirmez).
+// Garson çağrısında farklı, daha pes bir ton kullanılır.
+function ding(tones = [880, 1320]) {
   try {
     const ctx = new AudioContext();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain).connect(ctx.destination);
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.12);
+    osc.frequency.setValueAtTime(tones[0], ctx.currentTime);
+    osc.frequency.setValueAtTime(tones[1], ctx.currentTime + 0.12);
     gain.gain.setValueAtTime(0.2, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
     osc.start();
@@ -45,8 +53,9 @@ function elapsed(from: string, now: number) {
   return min < 1 ? "az önce" : `${min} dk`;
 }
 
-export function KitchenBoard({ initial }: { initial: Order[] }) {
+export function KitchenBoard({ initial, initialRequests }: { initial: Order[]; initialRequests: ServiceRequest[] }) {
   const [orders, setOrders] = useState(initial);
+  const [requests, setRequests] = useState(initialRequests);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -81,7 +90,22 @@ export function KitchenBoard({ initial }: { initial: Order[] }) {
     if (res.ok) setOrders(await res.json());
   }
 
+  async function refreshRequests() {
+    const res = await fetch("/api/kitchen/requests", { cache: "no-store" });
+    if (res.ok) setRequests(await res.json());
+  }
+
+  async function resolveRequest(id: number) {
+    setRequests((rs) => rs.filter((r) => r.id !== id));
+    await fetch(`/api/kitchen/requests/${id}`, { method: "PATCH" });
+  }
+
   useOrderEvents("/api/events", (e) => {
+    if (!e || e.type === "service") {
+      refreshRequests();
+      if (e?.type === "service" && !e.resolved && soundRef.current) ding([520, 390]);
+      if (e) return;
+    }
     refresh();
     if (e?.type === "created") {
       if (soundRef.current) ding();
@@ -137,6 +161,32 @@ export function KitchenBoard({ initial }: { initial: Order[] }) {
           </Button>
         </div>
       </div>
+
+      {requests.length > 0 && (
+        <div className="mb-5 flex flex-wrap gap-3" aria-live="assertive">
+          {requests.map((r) => (
+            <div
+              key={r.id}
+              className={cx(
+                "animate-slide-in flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold text-white shadow-lg",
+                r.type === "bill" ? "bg-violet-600" : "bg-sky-600",
+              )}
+            >
+              <span className="animate-wiggle text-2xl">{r.type === "bill" ? "🧾" : "🙋"}</span>
+              <span>
+                {r.table.name}: {r.type === "bill" ? "hesap istiyor" : "garson çağırıyor"}
+                <span className="ml-2 text-sm font-normal text-white/75">{elapsed(r.createdAt, now)}</span>
+              </span>
+              <button
+                onClick={() => resolveRequest(r.id)}
+                className="press ml-2 rounded-lg bg-white/20 px-3 py-1 text-sm hover:bg-white/30"
+              >
+                Tamam
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-5 md:grid-cols-3">
         {COLUMNS.map((col) => {

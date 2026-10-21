@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { categories, products, tables } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { parseTL } from "@/lib/money";
+import { isTag } from "@/lib/tags";
 
 export type ActionResult = { error?: string; ok?: boolean } | null;
 
@@ -44,7 +45,8 @@ export async function saveProduct(_prev: ActionResult, form: FormData): Promise<
   const price = parseTL(parsed.data.price);
   if (price === null || price === 0) return { error: "Geçerli bir fiyat girin (örn: 125,50)" };
 
-  const values = { ...parsed.data, emoji: parsed.data.emoji || "🍽️", price };
+  const tags = form.getAll("tags").map(String).filter(isTag);
+  const values = { ...parsed.data, emoji: parsed.data.emoji || "🍽️", price, tags };
   const id = Number(form.get("id"));
   if (id) await db.update(products).set(values).where(eq(products.id, id));
   else await db.insert(products).values(values);

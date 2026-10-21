@@ -4,6 +4,7 @@ import { Card } from "@/components/ui";
 import { db } from "@/db";
 import { categories, products } from "@/db/schema";
 import { formatTL } from "@/lib/money";
+import { TAGS, isTag } from "@/lib/tags";
 import { CategoryForm, DeleteCategory, ProductActions, ProductForm } from "./forms";
 
 export const metadata: Metadata = { title: "Menü yönetimi" };
@@ -44,6 +45,15 @@ export default async function MenuAdminPage() {
                           )}
                         </p>
                         <p className="truncate text-sm text-stone-500">{p.description}</p>
+                        {p.tags.filter(isTag).length > 0 && (
+                          <p className="mt-1 flex gap-1">
+                            {p.tags.filter(isTag).map((t) => (
+                              <span key={t} className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${TAGS[t].className}`}>
+                                {TAGS[t].icon} {TAGS[t].label}
+                              </span>
+                            ))}
+                          </p>
+                        )}
                       </div>
                       <span className="font-semibold">{formatTL(p.price)}</span>
                     </div>

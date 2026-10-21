@@ -10,15 +10,21 @@ Restoranlar için uçtan uca bir sipariş sistemi. Müşteri masadaki QR kodu ok
   <img src="docs/musteri-menu.png" width="210" alt="Müşteri menüsü">
   <img src="docs/sepet.png" width="210" alt="Sepet">
   <img src="docs/siparis-takip.png" width="210" alt="Canlı sipariş takibi">
+  <img src="docs/degerlendirme.png" width="210" alt="Sipariş değerlendirmesi">
 </p>
 
 ![Mutfak paneli](docs/mutfak.png)
+
+![Garson çağrıları](docs/mutfak-cagri.png)
 
 ## Özellikler
 
 **Müşteri (mobil)**
 - QR kod ile masaya özel menü, kaydırdıkça kendini vurgulayan kategori sekmeleri
 - Türkçe karakter duyarsız menü araması ("cay" yazınca "Çay" bulunur)
+- Acılı, vejetaryen, glutensiz ve şefin önerisi etiketleri, etikete göre filtreleme
+- **Garson çağır** ve **hesap iste** butonları, istek personelin ekranına anında düşer
+- Sipariş hazır olunca 1-5 yıldız ve yorumla değerlendirme
 - Son 7 günün en çok satanlarına otomatik "🔥 Popüler" rozeti
 - Animasyonlu sepet, ürün adedi ve mutfağa not. Sepet sayfa yenilense de kaybolmaz.
 - Sipariş durumunu gerçek zamanlı takip (Alındı → Hazırlanıyor → Hazır → Teslim edildi), tahmini süre, durum değişince titreşim, sipariş hazır olunca konfeti
@@ -27,11 +33,16 @@ Restoranlar için uçtan uca bir sipariş sistemi. Müşteri masadaki QR kodu ok
 - Siparişler üç sütunlu panoda canlı akar, yeni siparişte sesli uyarı verilir
 - Tek tıkla durum ilerletme ve iyimser arayüz güncellemesi
 - Her siparişte bekleme süresi çubuğu (yeşil → sarı → kırmızı), 20 dakikayı geçenler uyarıyla vurgulanır
+- Garson çağrıları ve hesap istekleri ayrı renkli bildirim ve farklı bir sesle gelir
 - Loş mutfak ortamı için karanlık tema ve tam ekran modu
 
 **Yönetim paneli**
 - Günlük ciro, sipariş sayısı, ortalama sepet, animasyonlu 7 günlük ciro grafiği ve en çok satanlar
-- Kategori ve ürün ekleme, düzenleme, silme, "tükendi" olarak işaretleme
+- **Canlı masa haritası**: hangi masada aktif sipariş var, açık tutar ne kadar, kim garson çağırıyor
+- Müşteri memnuniyet puanı ve son yorumlar
+- Siparişleri Excel'de açılabilen **CSV olarak dışa aktarma**
+- Panel yeni sipariş ve çağrı geldikçe kendiliğinden güncellenir
+- Kategori ve ürün ekleme, düzenleme, silme, "tükendi" olarak işaretleme, etiket atama
 - Masa ekleme, yazdırılabilir QR kodlar, sızan QR kodu tek tıkla geçersiz kılma
 
 ![Yönetim paneli](docs/yonetim.png)
@@ -57,6 +68,7 @@ Restoranlar için uçtan uca bir sipariş sistemi. Müşteri masadaki QR kodu ok
 - **Fiyatlar sunucuda hesaplanır.** İstemci sadece ürün ID'si ve adet gönderir. Toplam tutar veritabanındaki fiyattan hesaplanır, böylece kimse isteği değiştirerek ucuza sipariş veremez.
 - **Sipariş anındaki fiyat saklanır.** Ürün fiyatı sonradan değişse de eski siparişlerin tutarı bozulmaz.
 - **Para birimi kuruş cinsinden tam sayıdır.** Ondalık sayı yuvarlama hataları oluşmaz.
+- **Tekrarlanan çağrı koruması.** Müşteri "Garson çağır"a art arda bassa da aynı masa için tek açık çağrı tutulur.
 - **Durum makinesi.** Siparişler yalnızca izin verilen sırayla ilerler (ör. "Alındı"dan doğrudan "Teslim edildi"ye geçilemez).
 - **Eşzamanlılık kontrolü.** İki mutfak çalışanı aynı siparişe aynı anda basarsa güncellemelerden yalnızca biri başarılı olur (koşullu `UPDATE ... WHERE status = ?`).
 - **Tahmin edilemez QR anahtarları.** QR kodda masa numarası değil rastgele bir anahtar bulunur. Sipariş takip linkleri de UUID'dir.
@@ -119,7 +131,6 @@ drizzle/                SQL migration dosyaları
 
 ## Yol haritası
 
-- [ ] Garson çağırma ve hesap isteme butonu
 - [ ] Çoklu şube desteği
 - [ ] Ürün fotoğrafı yükleme
 - [ ] Çok sunuculu kurulum için SSE yerine Redis veya Postgres LISTEN/NOTIFY

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LiveRefresh } from "@/components/live-refresh";
 import { Card, cx } from "@/components/ui";
 import { db } from "@/db";
 import { formatTL } from "@/lib/money";
@@ -22,7 +23,21 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Bugünün özeti</h1>
+      <LiveRefresh />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Bugünün özeti</h1>
+          <p className="flex items-center gap-2 text-sm text-stone-500">
+            <span className="size-2 animate-pulse rounded-full bg-brand-500" /> Yeni siparişlerle otomatik güncellenir
+          </p>
+        </div>
+        <a
+          href="/api/admin/orders-csv?gun=30"
+          className="press inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold hover:bg-stone-100"
+        >
+          ⬇️ Son 30 gün (Excel/CSV)
+        </a>
+      </div>
       <div className="grid gap-4 sm:grid-cols-3">
         {[
           ["Bugünkü ciro", formatTL(d.revenue), "💰", "from-brand-600 to-brand-900"],
@@ -41,6 +56,53 @@ export default async function DashboardPage() {
           </div>
         ))}
       </div>
+
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold">Canlı masa durumu</h2>
+          <div className="flex gap-3 text-xs text-stone-500">
+            <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-stone-300" /> Boş</span>
+            <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-brand-500" /> Sipariş var</span>
+            <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-violet-500" /> Çağrı bekliyor</span>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {d.tableMap.map((t) => {
+            const calling = t.requests.length > 0;
+            const busy = t.activeOrders > 0;
+            return (
+              <div
+                key={t.id}
+                className={cx(
+                  "relative rounded-xl border-2 p-3 transition",
+                  calling
+                    ? "animate-flash border-violet-500 bg-violet-50"
+                    : busy
+                      ? "border-brand-500 bg-brand-50"
+                      : "border-dashed border-stone-200 bg-stone-50",
+                )}
+              >
+                <p className="font-bold">{t.name}</p>
+                {busy ? (
+                  <>
+                    <p className="text-sm text-brand-700">
+                      {t.activeOrders} aktif sipariş
+                    </p>
+                    <p className="text-sm font-semibold">{formatTL(t.openTotal)}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-stone-400">Boş</p>
+                )}
+                {calling && (
+                  <p className="mt-1 text-xs font-semibold text-violet-700">
+                    {t.requests.includes("bill") ? "🧾 Hesap istiyor" : "🙋 Garson çağırıyor"}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
@@ -96,6 +158,37 @@ export default async function DashboardPage() {
           )}
         </Card>
       </div>
+
+      <Card>
+        <div className="flex flex-wrap items-center gap-4">
+          <div>
+            <h2 className="font-semibold">Müşteri memnuniyeti (30 gün)</h2>
+            <p className="text-sm text-stone-500">{d.rating.count} değerlendirme</p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-4xl font-extrabold">{d.rating.count ? d.rating.average.toFixed(1) : "–"}</span>
+            <span className="text-xl text-amber-400">
+              {"★".repeat(Math.round(d.rating.average))}
+              <span className="text-stone-200">{"★".repeat(5 - Math.round(d.rating.average))}</span>
+            </span>
+          </div>
+        </div>
+        {d.rating.latest.length > 0 && (
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+            {d.rating.latest.map((r) => (
+              <li key={r.id} className="rounded-xl bg-stone-50 p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-amber-400">{"★".repeat(r.rating)}</span>
+                  <span className="text-stone-400">
+                    {r.order.table.name} · #{r.order.number}
+                  </span>
+                </div>
+                <p className="mt-1 text-stone-700">{r.comment || <span className="text-stone-400">Yorum yok</span>}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <Card>
         <h2 className="font-semibold">Son siparişler</h2>

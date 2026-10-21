@@ -1,6 +1,7 @@
-import { and, desc, gte, ne, sql } from "drizzle-orm";
+import { and, asc, desc, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { orderItems, orders } from "@/db/schema";
+import { orderItems, orders, reviews, serviceRequests, tables } from "@/db/schema";
+import { ACTIVE_STATUSES } from "./status";
 
 // Gün sınırları veritabanının saat diliminde (varsayılan Europe/Istanbul) hesaplanır
 const today = sql`date_trunc('day', now())`;
@@ -46,7 +47,49 @@ export async function getDashboard(db: Db) {
     with: { table: { columns: { name: true } } },
   });
 
+  // Canlı masa haritası: her masanın aktif siparişleri ve bekleyen çağrıları
+  const [allTables, active, openRequests] = await Promise.all([
+    db.query.tables.findMany({ where: sql`${tables.isActive}`, orderBy: [asc(tables.id)] }),
+    db
+      .select({
+        tableId: orders.tableId,
+        count: sql<number>`count(*)::int`,
+        total: sql<number>`sum(${orders.total})::int`,
+        oldest: sql<Date>`min(${orders.createdAt})`,
+      })
+      .from(orders)
+      .where(inArray(orders.status, ACTIVE_STATUSES))
+      .groupBy(orders.tableId),
+    db.select().from(serviceRequests).where(isNull(serviceRequests.resolvedAt)),
+  ]);
+  const tableMap = allTables.map((t) => {
+    const a = active.find((x) => x.tableId === t.id);
+    return {
+      id: t.id,
+      name: t.name,
+      activeOrders: a?.count ?? 0,
+      openTotal: a?.total ?? 0,
+      since: a?.oldest ? new Date(a.oldest) : null,
+      requests: openRequests.filter((r) => r.tableId === t.id).map((r) => r.type),
+    };
+  });
+
+  const [ratingSummary] = await db
+    .select({
+      average: sql<number>`coalesce(avg(${reviews.rating}), 0)::float`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(reviews)
+    .where(gte(reviews.createdAt, sql`now() - interval '30 days'`));
+  const latestReviews = await db.query.reviews.findMany({
+    orderBy: [desc(reviews.createdAt)],
+    limit: 4,
+    with: { order: { columns: { number: true }, with: { table: { columns: { name: true } } } } },
+  });
+
   return {
+    tableMap,
+    rating: { ...ratingSummary, latest: latestReviews },
     revenue: summary.revenue,
     count: summary.count,
     average: summary.count ? Math.round(summary.revenue / summary.count) : 0,

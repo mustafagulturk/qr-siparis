@@ -5,7 +5,7 @@ import { categories, products, tables } from "@/db/schema";
 export const db = createDb();
 
 export async function resetDb() {
-  await db.execute(sql`truncate order_items, orders, products, categories, tables, users restart identity cascade`);
+  await db.execute(sql`truncate reviews, service_requests, order_items, orders, products, categories, tables, users restart identity cascade`);
 }
 
 /** Bir masa, bir kategori ve iki ürün oluşturur. */

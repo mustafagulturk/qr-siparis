@@ -19,6 +19,8 @@ export const orderStatusEnum = pgEnum("order_status", [
   "cancelled",
 ]);
 
+export const serviceTypeEnum = pgEnum("service_type", ["waiter", "bill"]);
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -44,6 +46,8 @@ export const products = pgTable("products", {
   // Fiyatlar kuruş cinsinden tam sayı olarak tutulur (ondalık hatası olmasın)
   price: integer("price").notNull(),
   emoji: text("emoji").notNull().default("🍽️"),
+  // Örn: ["acili", "vejetaryen"]; menüde rozet ve filtre olarak gösterilir
+  tags: text("tags").array().notNull().default([]),
   isAvailable: boolean("is_available").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
 });
@@ -81,6 +85,27 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull(),
 });
 
+export const serviceRequests = pgTable("service_requests", {
+  id: serial("id").primaryKey(),
+  tableId: integer("table_id")
+    .notNull()
+    .references(() => tables.id, { onDelete: "cascade" }),
+  type: serviceTypeEnum("type").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+});
+
+export const reviews = pgTable("reviews", {
+  id: serial("id").primaryKey(),
+  orderId: uuid("order_id")
+    .notNull()
+    .unique()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(),
+  comment: text("comment").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const categoriesRelations = relations(categories, ({ many }) => ({
   products: many(products),
 }));
@@ -91,10 +116,18 @@ export const tablesRelations = relations(tables, ({ many }) => ({ orders: many(o
 export const ordersRelations = relations(orders, ({ one, many }) => ({
   table: one(tables, { fields: [orders.tableId], references: [tables.id] }),
   items: many(orderItems),
+  review: one(reviews, { fields: [orders.id], references: [reviews.orderId] }),
+}));
+export const serviceRequestsRelations = relations(serviceRequests, ({ one }) => ({
+  table: one(tables, { fields: [serviceRequests.tableId], references: [tables.id] }),
+}));
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  order: one(orders, { fields: [reviews.orderId], references: [orders.id] }),
 }));
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   order: one(orders, { fields: [orderItems.orderId], references: [orders.id] }),
 }));
 
 export type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
+export type ServiceType = (typeof serviceTypeEnum.enumValues)[number];
 export type Role = (typeof roleEnum.enumValues)[number];
