@@ -137,4 +137,4 @@ drizzle/                SQL migration dosyaları
 
 ## Lisans
 
-MIT
+[MIT](LICENSE), Mustafa Gulturk. Yazılım "olduğu gibi" sunulur; kullanımından doğan sorumluluk kullanana aittir.
